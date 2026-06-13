@@ -21,6 +21,43 @@ function estimateReadTime(content) {
   return `${mins} min read`;
 }
 
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_DIMENSION = 1600; // downscale longest side to this before saving
+
+// Downscale + re-encode an image File to a JPEG data URL so large photos don't
+// bloat the database / request. GIFs are passed through untouched (to keep
+// animation), just read as a data URL.
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (file.type === "image/gif") {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image"));
+    };
+    img.src = url;
+  });
+}
+
 export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
   const isEdit = Boolean(post);
   const [form, setForm] = useState(empty);
@@ -63,11 +100,32 @@ export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
-  function handleCover(e) {
+  async function handleCover(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCoverFile(file);
-    setCoverPreview(URL.createObjectURL(file));
+
+    // Validate type + size before doing any work.
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setErrors((x) => ({ ...x, cover: "Use a JPG, PNG, WEBP, or GIF image." }));
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setErrors((x) => ({ ...x, cover: "Image is over 5 MB. Choose a smaller file." }));
+      e.target.value = "";
+      return;
+    }
+    setErrors((x) => ({ ...x, cover: undefined }));
+
+    try {
+      // Compress/resize to a data URL; this becomes the saved cover.
+      const dataUrl = await compressImage(file);
+      setCoverFile(null);
+      setCoverPreview(dataUrl);
+    } catch {
+      setErrors((x) => ({ ...x, cover: "Couldn't process that image." }));
+    }
+    e.target.value = "";
   }
 
   function validate() {
@@ -85,15 +143,14 @@ export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
     // When we integrate, POST this payload (cover as multipart) to the API.
     // When editing, keep the post's existing status unless a new one is given.
     const finalStatus = status || post?.status || "Draft";
-    // Read time is auto-derived from the content, not typed by the owner.
+    // Read time is auto-derived from the content; cover is the compressed data
+    // URL (or the existing path when editing without changing the image).
     const payload = {
       ...form,
       readTime: estimateReadTime(form.content),
       status: finalStatus,
-      cover: coverFile,
       coverPreview,
     };
-    await new Promise((r) => setTimeout(r, 600)); // simulate request
     onSubmit?.(payload);
     setSaving(false);
     reset();
@@ -151,14 +208,16 @@ export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleCover}
               className="hidden"
             />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="w-full aspect-[16/7] rounded-xl border-2 border-dashed border-gray-200 hover:border-brand-300 hover:bg-brand-50/30 transition-colors flex flex-col items-center justify-center text-gray-400 overflow-hidden"
+              className={`w-full aspect-[16/7] rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center text-gray-400 overflow-hidden ${
+                errors.cover ? "border-red-300 bg-red-50/30" : "border-gray-200 hover:border-brand-300 hover:bg-brand-50/30"
+              }`}
             >
               {coverPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -167,10 +226,11 @@ export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
                 <>
                   <ImagePlus size={28} />
                   <span className="mt-2 text-sm">Click to upload cover image</span>
-                  <span className="text-xs text-gray-300">PNG, JPG up to 5MB</span>
+                  <span className="text-xs text-gray-300">JPG, PNG, WEBP, GIF · up to 5MB</span>
                 </>
               )}
             </button>
+            {errors.cover && <p className="mt-1 text-xs text-red-500">{errors.cover}</p>}
           </div>
 
           {/* Title */}

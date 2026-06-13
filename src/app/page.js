@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Users, FileText, MessageSquare, BadgeCheck } from "lucide-react";
 import DashboardShell, { useGlobalSearch } from "@/components/DashboardShell";
 import StatCard from "@/components/StatCard";
@@ -7,18 +8,30 @@ import InquiriesTable from "@/components/InquiriesTable";
 import InquiriesChart from "@/components/InquiriesChart";
 import RecentPosts from "@/components/RecentPosts";
 import { useInquiries } from "@/components/InquiriesProvider";
-import { recentPosts } from "@/data/inquiries";
+import { getPosts } from "@/data/posts";
 
 function DashboardContent() {
   const { query } = useGlobalSearch();
   const { inquiries } = useInquiries();
+  const [posts, setPosts] = useState([]);
+
+  // Real blog posts from the DB for the stat card.
+  useEffect(() => {
+    let cancelled = false;
+    getPosts()
+      .then((list) => !cancelled && setPosts(list))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Live stats derived from the actual data.
   const newCount = inquiries.filter((i) => i.status === "New").length;
-  const publishedCount = recentPosts.filter((p) => p.status === "Published").length;
+  const liveCount = posts.filter((p) => !p.hidden).length;
   const stats = [
     { title: "Total Inquiries", value: String(inquiries.length), sub: `${newCount} new`, tone: "teal", icon: Users },
-    { title: "Blog Posts", value: String(recentPosts.length), sub: `${publishedCount} published`, tone: "green", icon: FileText },
+    { title: "Blog Posts", value: String(posts.length), sub: `${liveCount} live on site`, tone: "green", icon: FileText },
     { title: "New Leads", value: String(newCount), sub: "awaiting reply", tone: "amber", icon: MessageSquare },
     { title: "Replied", value: String(inquiries.filter((i) => i.status === "Replied").length), sub: "this period", tone: "blue", icon: BadgeCheck },
   ];
@@ -65,3 +78,4 @@ export default function DashboardPage() {
     </DashboardShell>
   );
 }
+

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, MoreVertical, Pencil, Eye, EyeOff, Trash2, Loader2 } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Eye, EyeOff, Trash2 } from "lucide-react";
 import DashboardShell, { useGlobalSearch } from "@/components/DashboardShell";
 import AddBlogPanel from "@/components/AddBlogPanel";
 import { useToast } from "@/components/Toast";
@@ -154,8 +154,10 @@ function BlogContent() {
 
       {/* Post grid */}
       {loading ? (
-        <div className="py-16 text-center text-gray-400 flex items-center justify-center gap-2">
-          <Loader2 size={18} className="animate-spin" /> Loading posts…
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <PostCardSkeleton key={i} />
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -291,4 +293,25 @@ function PostCard({ post, onEdit, onToggleHidden, onDelete }) {
     </article>
   );
 }
+
+function PostCardSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col animate-pulse">
+      <div className="aspect-[16/10] bg-gray-100" />
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex gap-1.5 mb-3">
+          <div className="h-4 w-20 rounded-full bg-gray-100" />
+          <div className="h-4 w-12 rounded-full bg-gray-100" />
+        </div>
+        <div className="h-4 w-full rounded bg-gray-100 mb-2" />
+        <div className="h-4 w-2/3 rounded bg-gray-100 mb-4" />
+        <div className="flex items-center gap-2 mt-auto pt-2 border-t border-gray-50">
+          <div className="w-5 h-5 rounded-full bg-gray-100" />
+          <div className="h-3 w-24 rounded bg-gray-100" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 

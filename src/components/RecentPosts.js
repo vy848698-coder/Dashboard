@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { getPosts } from "@/data/posts";
 
 // Cover images are stored as paths relative to the public site folder. Resolve
@@ -69,8 +69,18 @@ export default function RecentPosts() {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-gray-400 flex items-center justify-center gap-2">
-          <Loader2 size={18} className="animate-spin" /> Loading posts…
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-gray-100 overflow-hidden flex flex-col animate-pulse">
+              <div className="aspect-[16/10] bg-gray-100" />
+              <div className="p-3.5 flex flex-col flex-1">
+                <div className="h-4 w-16 rounded-full bg-gray-100 mb-3" />
+                <div className="h-4 w-full rounded bg-gray-100 mb-2" />
+                <div className="h-4 w-2/3 rounded bg-gray-100 mb-4" />
+                <div className="h-3 w-24 rounded bg-gray-100 mt-auto" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : recent.length === 0 ? (
         <div className="py-10 text-center text-gray-400">
