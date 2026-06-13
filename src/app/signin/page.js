@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Mail, Lock, User, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { checkCredentials, setAuthed } from "@/data/auth";
 
 export default function SignInPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [authError, setAuthError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,6 @@ export default function SignInPage() {
 
   function validate() {
     const errs = {};
-    if (!form.name.trim()) errs.name = "Name is required";
     if (!form.email.trim()) errs.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Enter a valid email";
     if (!form.password) errs.password = "Password is required";
@@ -86,10 +85,6 @@ export default function SignInPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Name" icon={User} error={errors.name}>
-              <input value={form.name} onChange={set("name")} placeholder="Your name" className={inputCls(errors.name)} />
-            </Field>
-
             <Field label="Email" icon={Mail} error={errors.email}>
               <input type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" className={inputCls(errors.email)} />
             </Field>

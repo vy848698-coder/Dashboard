@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, UserPlus, CheckCheck } from "lucide-react";
-import { getRecentInquiries, timeAgo } from "@/data/inquiries";
+import { timeAgo } from "@/data/inquiries";
+import { useInquiries } from "./InquiriesProvider";
 
 function initials(name) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -11,14 +12,18 @@ function initials(name) {
 
 export default function NotificationBell() {
   const router = useRouter();
+  const { inquiries } = useInquiries();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
   const [readIds, setReadIds] = useState(new Set());
   const ref = useRef(null);
 
-  // Load recent inquiries + which ones were already read this session.
+  // Recent inquiries, newest first.
+  const items = [...inquiries]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 6);
+
+  // Which ones were already read this session.
   useEffect(() => {
-    setItems(getRecentInquiries(6));
     if (typeof window !== "undefined") {
       try {
         const saved = JSON.parse(sessionStorage.getItem("cm_read_notifs") || "[]");

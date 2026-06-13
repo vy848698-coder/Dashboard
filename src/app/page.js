@@ -6,10 +6,12 @@ import StatCard from "@/components/StatCard";
 import InquiriesTable from "@/components/InquiriesTable";
 import InquiriesChart from "@/components/InquiriesChart";
 import RecentPosts from "@/components/RecentPosts";
-import { inquiries, recentPosts } from "@/data/inquiries";
+import { useInquiries } from "@/components/InquiriesProvider";
+import { recentPosts } from "@/data/inquiries";
 
 function DashboardContent() {
   const { query } = useGlobalSearch();
+  const { inquiries } = useInquiries();
 
   // Live stats derived from the actual data.
   const newCount = inquiries.filter((i) => i.status === "New").length;

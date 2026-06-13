@@ -58,13 +58,15 @@ function saveOwners(list) {
 }
 
 // Returns { ok: true } or { ok: false, error }.
-export function addOwner({ name, email, password }) {
+export function addOwner({ email, password }) {
   const owners = getOwners();
   const cleanEmail = email.trim().toLowerCase();
   if (owners.some((o) => o.email.toLowerCase() === cleanEmail)) {
     return { ok: false, error: "An owner with this email already exists." };
   }
-  owners.push({ name: name.trim(), email: email.trim(), password });
+  // Derive a display name from the email's local part (e.g. "owner@x.com" → "owner").
+  const name = email.trim().split("@")[0];
+  owners.push({ name, email: email.trim(), password });
   saveOwners(owners);
   return { ok: true };
 }
@@ -80,13 +82,11 @@ export function removeOwner(email) {
 
 // --- Credentials check -----------------------------------------------------
 
-export function checkCredentials({ name, email, password }) {
-  const cleanName = name.trim().toLowerCase();
+export function checkCredentials({ email, password }) {
   const cleanEmail = email.trim().toLowerCase();
   return (
     getOwners().find(
       (o) =>
-        o.name.toLowerCase() === cleanName &&
         o.email.toLowerCase() === cleanEmail &&
         o.password === password
     ) || null

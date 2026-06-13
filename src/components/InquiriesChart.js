@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { ChevronDown } from "lucide-react";
 import { buildOverview } from "@/data/inquiries";
+import { useInquiries } from "./InquiriesProvider";
 
 const RANGES = {
   "Last 7 Days": 7,
@@ -34,8 +35,9 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function InquiriesChart() {
   const [range, setRange] = useState("Last 30 Days");
+  const { inquiries } = useInquiries();
 
-  const data = useMemo(() => buildOverview(RANGES[range]), [range]);
+  const data = useMemo(() => buildOverview(RANGES[range], inquiries), [range, inquiries]);
   const total = useMemo(() => data.reduce((sum, d) => sum + d.inquiries, 0), [data]);
 
   // Auto-scale the Y axis to the real data (real counts are small).

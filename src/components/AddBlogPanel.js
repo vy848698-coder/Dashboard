@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { X, ImagePlus, Loader2 } from "lucide-react";
-import { getCategories } from "@/data/categories";
+import { getCategoryNames } from "@/data/categories";
 
 const empty = {
   title: "",
@@ -13,24 +13,53 @@ const empty = {
   content: "",
 };
 
-export default function AddBlogPanel({ open, onClose, onSubmit }) {
+// Estimate reading time from the post content (~200 words per minute, min 1).
+function estimateReadTime(content) {
+  const words = (content || "").trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return "";
+  const mins = Math.max(1, Math.round(words / 200));
+  return `${mins} min read`;
+}
+
+export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
+  const isEdit = Boolean(post);
   const [form, setForm] = useState(empty);
   const [categories, setCategories] = useState([]);
-
-  // Load the owner-managed categories whenever the panel opens, so newly added
-  // categories show up immediately.
-  useEffect(() => {
-    if (open) {
-      const list = getCategories();
-      setCategories(list);
-      setForm((f) => ({ ...f, category: f.category || list[0] || "" }));
-    }
-  }, [open]);
   const [coverPreview, setCoverPreview] = useState("");
   const [coverFile, setCoverFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const fileRef = useRef(null);
+
+  // When the panel opens: load owner-managed categories (from the shared DB),
+  // and prefill the form from `post` when editing (otherwise start blank).
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const list = await getCategoryNames();
+      if (cancelled) return;
+      setCategories(list);
+      if (post) {
+        setForm({
+          title: post.title || "",
+          category: post.category || list[0] || "",
+          author: post.author || "",
+          readTime: post.readTime || "",
+          excerpt: post.excerpt || "",
+          content: post.content || "",
+        });
+        setCoverPreview(post.cover || "");
+        setCoverFile(null);
+      } else {
+        setForm({ ...empty, category: list[0] || "" });
+        setCoverPreview("");
+        setCoverFile(null);
+      }
+      setErrors({});
+    })();
+    return () => { cancelled = true; };
+  }, [open, post]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -54,7 +83,16 @@ export default function AddBlogPanel({ open, onClose, onSubmit }) {
     if (!validate()) return;
     setSaving(true);
     // When we integrate, POST this payload (cover as multipart) to the API.
-    const payload = { ...form, status, cover: coverFile, coverPreview };
+    // When editing, keep the post's existing status unless a new one is given.
+    const finalStatus = status || post?.status || "Draft";
+    // Read time is auto-derived from the content, not typed by the owner.
+    const payload = {
+      ...form,
+      readTime: estimateReadTime(form.content),
+      status: finalStatus,
+      cover: coverFile,
+      coverPreview,
+    };
     await new Promise((r) => setTimeout(r, 600)); // simulate request
     onSubmit?.(payload);
     setSaving(false);
@@ -88,8 +126,12 @@ export default function AddBlogPanel({ open, onClose, onSubmit }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Add New Blog Post</h2>
-            <p className="text-sm text-gray-500">Fill in the details and publish.</p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {isEdit ? "Edit Blog Post" : "Add New Blog Post"}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {isEdit ? "Update the details and save your changes." : "Fill in the details and publish."}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -150,12 +192,13 @@ export default function AddBlogPanel({ open, onClose, onSubmit }) {
                 ))}
               </select>
             </Field>
-            <Field label="Read Time">
+            <Field label="Read Time" hint="auto from content">
               <input
-                value={form.readTime}
-                onChange={set("readTime")}
-                placeholder="9 min read"
-                className={inputCls()}
+                value={estimateReadTime(form.content) || ""}
+                placeholder="Calculated automatically"
+                readOnly
+                tabIndex={-1}
+                className={inputCls() + " bg-gray-50 text-gray-500 cursor-default"}
               />
             </Field>
           </div>
@@ -196,11 +239,11 @@ export default function AddBlogPanel({ open, onClose, onSubmit }) {
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button
-            onClick={() => submit("Draft")}
+            onClick={onClose}
             disabled={saving}
             className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
-            Save Draft
+            Cancel
           </button>
           <button
             onClick={() => submit("Published")}
@@ -208,7 +251,7 @@ export default function AddBlogPanel({ open, onClose, onSubmit }) {
             className="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {saving && <Loader2 size={16} className="animate-spin" />}
-            Publish
+            {isEdit ? "Save Changes" : "Publish to Website"}
           </button>
         </div>
       </aside>

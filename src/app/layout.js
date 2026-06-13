@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ToastProvider } from "@/components/Toast";
+import { InquiriesProvider } from "@/components/InquiriesProvider";
 
 export const metadata = {
   title: "Clans Machina | Admin Panel",
@@ -10,7 +11,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <InquiriesProvider>{children}</InquiriesProvider>
+        </ToastProvider>
       </body>
     </html>
   );

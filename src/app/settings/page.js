@@ -12,7 +12,7 @@ export default function SettingsPage() {
   const toast = useToast();
   const [owners, setOwners] = useState([]);
   const [current, setCurrent] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const [newCategory, setNewCategory] = useState("");
 
   const refresh = () => setOwners(getOwners());
-  const refreshCategories = () => setCategories(getCategories());
+  const refreshCategories = async () => setCategories(await getCategories());
 
   useEffect(() => {
     refresh();
@@ -29,11 +29,12 @@ export default function SettingsPage() {
     setCurrent(getCurrentOwner());
   }, []);
 
-  function handleAddCategory(e) {
+  async function handleAddCategory(e) {
     e.preventDefault();
-    const res = addCategory(newCategory);
+    const name = newCategory.trim();
+    const res = await addCategory(name);
     if (res.ok) {
-      toast(`Category “${newCategory.trim()}” added.`, "success");
+      toast(`Category “${name}” added.`, "success");
       setNewCategory("");
       refreshCategories();
     } else {
@@ -41,8 +42,8 @@ export default function SettingsPage() {
     }
   }
 
-  function handleRemoveCategory(name) {
-    const res = removeCategory(name);
+  async function handleRemoveCategory(name) {
+    const res = await removeCategory(name);
     if (res.ok) {
       toast(`Category “${name}” removed.`, "info");
       refreshCategories();
@@ -58,7 +59,6 @@ export default function SettingsPage() {
 
   function validate() {
     const errs = {};
-    if (!form.name.trim()) errs.name = "Name is required";
     if (!form.email.trim()) errs.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Enter a valid email";
     if (!form.password) errs.password = "Password is required";
@@ -75,8 +75,8 @@ export default function SettingsPage() {
 
     const res = addOwner(form);
     if (res.ok) {
-      toast(`${form.name} can now log in as an owner.`, "success");
-      setForm({ name: "", email: "", password: "" });
+      toast(`${form.email} can now log in as an owner.`, "success");
+      setForm({ email: "", password: "" });
       refresh();
     } else {
       setErrors({ email: res.error });
@@ -157,9 +157,6 @@ export default function SettingsPage() {
           </p>
 
           <form onSubmit={handleAdd} className="space-y-4">
-            <Field label="Name" error={errors.name}>
-              <input value={form.name} onChange={set("name")} placeholder="Full name" className={inputCls(errors.name)} />
-            </Field>
             <Field label="Email" error={errors.email}>
               <input type="email" value={form.email} onChange={set("email")} placeholder="owner@example.com" className={inputCls(errors.email)} />
             </Field>
@@ -210,14 +207,14 @@ export default function SettingsPage() {
         <div className="flex flex-wrap gap-2">
           {categories.map((c) => (
             <span
-              key={c}
+              key={c.slug || c.name}
               className="group inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100 text-sm font-medium"
             >
-              {c}
+              {c.name}
               <button
-                onClick={() => handleRemoveCategory(c)}
+                onClick={() => handleRemoveCategory(c.name)}
                 className="w-5 h-5 rounded-full flex items-center justify-center text-brand-400 hover:bg-brand-200 hover:text-brand-700 transition-colors"
-                title={`Remove ${c}`}
+                title={`Remove ${c.name}`}
               >
                 <Trash2 size={12} />
               </button>

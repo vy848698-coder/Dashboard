@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { inquiries } from "@/data/inquiries";
+import { useInquiries } from "./InquiriesProvider";
 
 const statusStyles = {
   New: "bg-brand-100 text-brand-700",
@@ -24,6 +24,7 @@ function initials(name) {
 }
 
 export default function InquiriesTable({ query = "" }) {
+  const { inquiries } = useInquiries();
   const q = query.trim().toLowerCase();
   const rows = q
     ? inquiries.filter(
