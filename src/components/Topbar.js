@@ -4,13 +4,22 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "./Toast";
-import { Bell, Search, ChevronDown, User, Settings, LogOut, Menu } from "lucide-react";
+import Avatar from "./Avatar";
+import NotificationBell from "./NotificationBell";
+import { clearAuthed, getCurrentOwner } from "@/data/auth";
+import { Search, ChevronDown, User, Settings, LogOut, Menu } from "lucide-react";
 
 export default function Topbar({ onMenuClick, query = "", onQueryChange, searchPlaceholder = "Search anything..." }) {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const [owner, setOwner] = useState({ name: "Admin", email: "" });
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    const current = getCurrentOwner();
+    if (current) setOwner(current);
+  }, []);
 
   // Close on outside click or Escape. Listener is attached on the next tick
   // so the same click that opens the menu can't immediately close it.
@@ -35,8 +44,8 @@ export default function Topbar({ onMenuClick, query = "", onQueryChange, searchP
 
   function handleLogout() {
     setOpen(false);
+    clearAuthed();
     toast("You've been logged out.", "info");
-    // UI-only for now: real session teardown comes with auth integration.
     router.push("/signin");
   }
 
@@ -77,10 +86,7 @@ export default function Topbar({ onMenuClick, query = "", onQueryChange, searchP
         </div>
 
         {/* Notifications */}
-        <button className="relative p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-brand-500 rounded-full ring-2 ring-white animate-pulse" />
-        </button>
+        <NotificationBell />
 
         {/* Divider */}
         <div className="hidden sm:block w-px h-8 bg-gray-200" />
@@ -97,18 +103,13 @@ export default function Topbar({ onMenuClick, query = "", onQueryChange, searchP
           >
             <span className="relative">
               <span className="block p-0.5 rounded-full bg-gradient-to-br from-brand-400 to-steel-500">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="https://i.pravatar.cc/80?img=12"
-                  alt="Admin"
-                  className="w-9 h-9 rounded-full object-cover ring-2 ring-white"
-                />
+                <Avatar name={owner.name} size={36} className="ring-2 ring-white" />
               </span>
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-brand-500 rounded-full ring-2 ring-white" />
             </span>
             <div className="hidden sm:block text-left">
-              <p className="text-sm font-semibold text-gray-900 leading-tight">Admin Owner</p>
-              <p className="text-xs text-brand-600">Super Admin</p>
+              <p className="text-sm font-semibold text-gray-900 leading-tight">{owner.name}</p>
+              <p className="text-xs text-brand-600">Owner</p>
             </div>
             <ChevronDown
               size={16}
@@ -123,15 +124,10 @@ export default function Topbar({ onMenuClick, query = "", onQueryChange, searchP
             >
               {/* Header */}
               <div className="px-3 py-3 rounded-xl bg-gradient-to-br from-brand-50 to-steel-100/60 flex items-center gap-3 mb-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="https://i.pravatar.cc/80?img=12"
-                  alt="Admin"
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-white"
-                />
+                <Avatar name={owner.name} size={44} className="ring-2 ring-white" />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">Admin Owner</p>
-                  <p className="text-xs text-gray-500 truncate">admin@clansmachina.com</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{owner.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{owner.email}</p>
                 </div>
               </div>
 

@@ -78,34 +78,60 @@ export const inquiries = [
   },
 ];
 
-// Daily inquiry counts for the "Inquiries Overview" chart.
-export const inquiriesOverview = [
-  { date: "Apr 21", inquiries: 38 },
-  { date: "Apr 23", inquiries: 30 },
-  { date: "Apr 25", inquiries: 28 },
-  { date: "Apr 27", inquiries: 42 },
-  { date: "Apr 29", inquiries: 38 },
-  { date: "May 01", inquiries: 50 },
-  { date: "May 03", inquiries: 48 },
-  { date: "May 05", inquiries: 60 },
-  { date: "May 07", inquiries: 72 },
-  { date: "May 09", inquiries: 75 },
-  { date: "May 11", inquiries: 62 },
-  { date: "May 13", inquiries: 65 },
-  { date: "May 15", inquiries: 60 },
-  { date: "May 17", inquiries: 68 },
-  { date: "May 19", inquiries: 80 },
-];
+// Recent inquiries, newest first — used by the notification bell.
+export function getRecentInquiries(limit = 6, rows = inquiries) {
+  return [...rows]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, limit);
+}
 
-// Blog categories available when creating a post.
-export const BLOG_CATEGORIES = [
-  "PM Surya Ghar",
-  "Solar Basics",
-  "Subsidy & Finance",
-  "Case Studies",
-  "Maintenance",
-  "Company News",
-];
+// Short relative time, e.g. "2h ago", "3d ago".
+export function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.round(days / 30);
+  return `${months}mo ago`;
+}
+
+// Builds the "Inquiries Overview" series straight from the real inquiries:
+// counts how many came in on each day over the last `days` days.
+// When the live DB is wired, pass the fetched rows in as `rows`.
+export function buildOverview(days = 30, rows = inquiries) {
+  // Count inquiries per calendar day (YYYY-MM-DD key).
+  const counts = {};
+  for (const inq of rows) {
+    const key = new Date(inq.date).toISOString().slice(0, 10);
+    counts[key] = (counts[key] || 0) + 1;
+  }
+
+  // Anchor the window on the most recent inquiry so demo data is visible;
+  // with live data, swap `anchor` for `new Date()` (today).
+  const latest = rows.reduce(
+    (max, inq) => (new Date(inq.date) > max ? new Date(inq.date) : max),
+    new Date(0)
+  );
+  const anchor = latest > new Date(0) ? latest : new Date();
+
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    series.push({
+      date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      inquiries: counts[key] || 0,
+    });
+  }
+  return series;
+}
+
+// Blog categories are managed by the owner — see src/data/categories.js.
 
 export const POST_STATUSES = ["Published", "Draft"];
 

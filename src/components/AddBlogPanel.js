@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X, ImagePlus, Loader2 } from "lucide-react";
-import { BLOG_CATEGORIES } from "@/data/inquiries";
+import { getCategories } from "@/data/categories";
 
 const empty = {
   title: "",
-  category: BLOG_CATEGORIES[0],
+  category: "",
   author: "",
   readTime: "",
   excerpt: "",
@@ -15,6 +15,17 @@ const empty = {
 
 export default function AddBlogPanel({ open, onClose, onSubmit }) {
   const [form, setForm] = useState(empty);
+  const [categories, setCategories] = useState([]);
+
+  // Load the owner-managed categories whenever the panel opens, so newly added
+  // categories show up immediately.
+  useEffect(() => {
+    if (open) {
+      const list = getCategories();
+      setCategories(list);
+      setForm((f) => ({ ...f, category: f.category || list[0] || "" }));
+    }
+  }, [open]);
   const [coverPreview, setCoverPreview] = useState("");
   const [coverFile, setCoverFile] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -134,7 +145,7 @@ export default function AddBlogPanel({ open, onClose, onSubmit }) {
           <div className="grid grid-cols-2 gap-4">
             <Field label="Category">
               <select value={form.category} onChange={set("category")} className={inputCls()}>
-                {BLOG_CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
               </select>

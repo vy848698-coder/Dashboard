@@ -1,8 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import Avatar from "@/components/Avatar";
+import { getCurrentOwner } from "@/data/auth";
 
 export default function ProfilePage() {
+  const [owner, setOwner] = useState({ name: "Owner", email: "" });
+
+  useEffect(() => {
+    const current = getCurrentOwner();
+    if (current) setOwner(current);
+  }, []);
+
   return (
     <DashboardShell>
       <div className="pt-6 pb-2">
@@ -12,21 +22,18 @@ export default function ProfilePage() {
 
       <div className="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 max-w-2xl">
         <div className="flex items-center gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://i.pravatar.cc/120?img=12"
-            alt="Admin"
-            className="w-20 h-20 rounded-full object-cover"
-          />
+          <span className="p-1 rounded-full bg-gradient-to-br from-brand-400 to-steel-500">
+            <Avatar name={owner.name} size={80} className="ring-2 ring-white" />
+          </span>
           <div>
-            <p className="text-lg font-semibold text-gray-900">Admin Owner</p>
-            <p className="text-sm text-brand-600">Super Admin</p>
-            <p className="text-sm text-gray-400">admin@clansmachina.com</p>
+            <p className="text-lg font-semibold text-gray-900">{owner.name}</p>
+            <p className="text-sm text-brand-600">Owner</p>
+            <p className="text-sm text-gray-400">{owner.email}</p>
           </div>
         </div>
 
         <p className="mt-6 text-sm text-gray-400">
-          Profile editing will be available once account integration is wired up.
+          To manage owners, go to <span className="font-medium text-gray-600">Settings → Owners</span>.
         </p>
       </div>
     </DashboardShell>
