@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FilePlus, UploadCloud, Users, FolderTree, ChevronRight } from "lucide-react";
+import { FilePlus, UploadCloud, ChevronRight } from "lucide-react";
 
 // Items with `href` navigate; items with `key` trigger an in-page action.
 const actions = [
   { key: "new-post", label: "Add New Blog Post", desc: "Write & publish an article", icon: FilePlus, tone: "teal" },
   { href: "/media", label: "Upload Media", desc: "Add images to the library", icon: UploadCloud, tone: "green" },
-  { href: "/inquiries", label: "View All Inquiries", desc: "See every lead", icon: Users, tone: "blue" },
-  { href: "/categories", label: "Manage Categories", desc: "Organize your blog", icon: FolderTree, tone: "amber" },
 ];
 
 const tones = {

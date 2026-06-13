@@ -1,21 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { Users, FileText, MessageSquare, BadgeCheck } from "lucide-react";
 import DashboardShell, { useGlobalSearch } from "@/components/DashboardShell";
 import StatCard from "@/components/StatCard";
 import InquiriesTable from "@/components/InquiriesTable";
-import QuickActions from "@/components/QuickActions";
 import InquiriesChart from "@/components/InquiriesChart";
 import RecentPosts from "@/components/RecentPosts";
-import AddBlogPanel from "@/components/AddBlogPanel";
-import { useToast } from "@/components/Toast";
 import { inquiries, recentPosts } from "@/data/inquiries";
 
 function DashboardContent() {
   const { query } = useGlobalSearch();
-  const toast = useToast();
-  const [blogPanelOpen, setBlogPanelOpen] = useState(false);
 
   // Live stats derived from the actual data.
   const newCount = inquiries.filter((i) => i.status === "New").length;
@@ -26,19 +20,6 @@ function DashboardContent() {
     { title: "New Leads", value: String(newCount), sub: "awaiting reply", tone: "amber", icon: MessageSquare },
     { title: "Replied", value: String(inquiries.filter((i) => i.status === "Replied").length), sub: "this period", tone: "blue", icon: BadgeCheck },
   ];
-
-  function handleQuickAction(key) {
-    if (key === "new-post") setBlogPanelOpen(true);
-  }
-
-  function handleCreatePost(payload) {
-    // Integration point: send `payload` to the blog API.
-    console.log("New blog post:", payload);
-    toast(
-      payload.status === "Published" ? "Blog post published!" : "Draft saved.",
-      "success"
-    );
-  }
 
   return (
     <>
@@ -62,26 +43,15 @@ function DashboardContent() {
         <InquiriesTable query={query} />
       </div>
 
-      {/* Chart + Quick Actions */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mt-6">
-        <div className="xl:col-span-8">
-          <InquiriesChart />
-        </div>
-        <div className="xl:col-span-4">
-          <QuickActions onAction={handleQuickAction} />
-        </div>
+      {/* Chart — full width */}
+      <div className="mt-6">
+        <InquiriesChart />
       </div>
 
       {/* Recent Blog Posts */}
       <div className="mt-6">
         <RecentPosts />
       </div>
-
-      <AddBlogPanel
-        open={blogPanelOpen}
-        onClose={() => setBlogPanelOpen(false)}
-        onSubmit={handleCreatePost}
-      />
     </>
   );
 }
