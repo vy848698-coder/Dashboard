@@ -12,7 +12,7 @@ const CURRENT_KEY = "cm_admin_current";
 // The first/seed owner. Always present and cannot be removed.
 export const SEED_OWNER = {
   name: "Vivek",
-  email: "vk3630932@gmail.com",
+  email: "vk3630@gmail.com",
   password: "asdfg",
   seed: true,
 };
@@ -27,13 +27,26 @@ export function getOwners() {
       localStorage.setItem(OWNERS_KEY, JSON.stringify([SEED_OWNER]));
       return [SEED_OWNER];
     }
-    const list = JSON.parse(raw);
-    // Make sure the seed owner is always there.
-    if (!list.some((o) => o.email.toLowerCase() === SEED_OWNER.email.toLowerCase())) {
-      list.unshift(SEED_OWNER);
+
+    const stored = JSON.parse(raw);
+    const seedEmail = SEED_OWNER.email.toLowerCase();
+
+    // Auto-migration: drop any stale seed/primary entry (e.g. an old email a
+    // previous version seeded) and keep only genuinely added owners.
+    const added = stored.filter(
+      (o) => !o.seed && o.email.toLowerCase() !== seedEmail
+    );
+
+    // Rebuild with the current seed owner first.
+    const list = [SEED_OWNER, ...added];
+
+    // Persist the cleaned list if it differs from what was stored.
+    if (JSON.stringify(list) !== raw) {
+      localStorage.setItem(OWNERS_KEY, JSON.stringify(list));
     }
     return list;
   } catch {
+    localStorage.setItem(OWNERS_KEY, JSON.stringify([SEED_OWNER]));
     return [SEED_OWNER];
   }
 }
