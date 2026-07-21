@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { inquiries as MOCK_INQUIRIES } from "@/data/inquiries";
+import { withKey } from "@/data/apiConfig";
 
 const API_URL = process.env.NEXT_PUBLIC_INQUIRIES_API;
 const UPDATE_URL = process.env.NEXT_PUBLIC_UPDATE_STATUS_API;
@@ -29,7 +30,7 @@ export function InquiriesProvider({ children }) {
       return;
     }
     try {
-      const res = await fetch(API_URL, { cache: "no-store" });
+      const res = await fetch(API_URL, { cache: "no-store", headers: withKey() });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error("Expected a JSON array");
@@ -63,7 +64,7 @@ export function InquiriesProvider({ children }) {
     try {
       const res = await fetch(UPDATE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withKey({ "Content-Type": "application/json" }),
         body: JSON.stringify({ id, status }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

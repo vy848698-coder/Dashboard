@@ -12,6 +12,8 @@
 // whether it appears on the website. (Draft is a dashboard-only concept now and
 // is mapped to hidden=true when saving — see addPost/updatePost in the page.)
 
+import { withKey } from "./apiConfig";
+
 const API = process.env.NEXT_PUBLIC_POSTS_API;
 
 // Read a File into a base64 data URL so it can be sent as JSON to PHP.
@@ -42,8 +44,12 @@ async function toPayload(data) {
   };
 }
 
-async function call(url, options) {
-  const res = await fetch(url, { cache: "no-store", ...options });
+async function call(url, options = {}) {
+  const res = await fetch(url, {
+    cache: "no-store",
+    ...options,
+    headers: withKey(options.headers),
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

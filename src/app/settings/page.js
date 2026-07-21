@@ -5,7 +5,7 @@ import { UserPlus, Trash2, ShieldCheck, Loader2, Tag, Plus } from "lucide-react"
 import DashboardShell from "@/components/DashboardShell";
 import Avatar from "@/components/Avatar";
 import { useToast } from "@/components/Toast";
-import { getOwners, addOwner, removeOwner, getCurrentOwner, SEED_OWNER } from "@/data/auth";
+import { getOwners, addOwner, removeOwner, getCurrentOwner } from "@/data/auth";
 import { getCategories, addCategory, removeCategory } from "@/data/categories";
 
 export default function SettingsPage() {
@@ -20,7 +20,7 @@ export default function SettingsPage() {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
 
-  const refresh = () => setOwners(getOwners());
+  const refresh = async () => setOwners(await getOwners());
   const refreshCategories = async () => setCategories(await getCategories());
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function SettingsPage() {
     setSaving(true);
     await new Promise((r) => setTimeout(r, 400));
 
-    const res = addOwner(form);
+    const res = await addOwner(form);
     if (res.ok) {
       toast(`${form.email} can now log in as an owner.`, "success");
       setForm({ email: "", password: "" });
@@ -85,8 +85,8 @@ export default function SettingsPage() {
     setSaving(false);
   }
 
-  function handleRemove(owner) {
-    const res = removeOwner(owner.email);
+  async function handleRemove(owner) {
+    const res = await removeOwner(owner.email);
     if (res.ok) {
       toast(`${owner.name} removed.`, "info");
       refresh();
@@ -95,7 +95,7 @@ export default function SettingsPage() {
     }
   }
 
-  const isSeed = (o) => o.email.toLowerCase() === SEED_OWNER.email.toLowerCase();
+  const isSeed = (o) => !!o.seed;
 
   return (
     <DashboardShell>

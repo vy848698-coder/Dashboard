@@ -8,6 +8,8 @@
 // Each category is { id, name, slug, sort_order }. Most of the UI only needs the
 // display `name`, so getCategoryNames() returns a plain string[] for convenience.
 
+import { withKey } from "./apiConfig";
+
 const API = process.env.NEXT_PUBLIC_CATEGORIES_API;
 
 // Fallback names shown if the API isn't configured/reachable (matches the DB seed).
@@ -20,8 +22,12 @@ export const DEFAULT_CATEGORIES = [
   "Company News",
 ];
 
-async function call(url, options) {
-  const res = await fetch(url, { cache: "no-store", ...options });
+async function call(url, options = {}) {
+  const res = await fetch(url, {
+    cache: "no-store",
+    ...options,
+    headers: withKey(options.headers),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     return { ok: false, error: data.error || `HTTP ${res.status}`, data };

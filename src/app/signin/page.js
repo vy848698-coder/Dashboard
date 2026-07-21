@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import { checkCredentials, setAuthed } from "@/data/auth";
+import { signIn } from "@/data/auth";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -32,14 +32,12 @@ export default function SignInPage() {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
 
-    const owner = checkCredentials(form);
-    if (owner) {
-      setAuthed(owner);
+    const res = await signIn(form);
+    if (res.ok) {
       router.push("/");
     } else {
-      setAuthError("Invalid credentials. Access is restricted to owners.");
+      setAuthError(res.error || "Invalid credentials. Access is restricted to owners.");
       setLoading(false);
     }
   }

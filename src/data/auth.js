@@ -1,120 +1,25 @@
-// Owner accounts + session helpers.
+// Owner auth — backed by the PHP server (auth_api.php) with bcrypt password
+// hashes in the `admin_users` table. Login returns a signed bearer token that is
+// kept in sessionStorage and sent on every API request (see apiConfig.js).
 //
-// ⚠️ TEMPORARY / UI-PHASE ONLY: owner accounts (including passwords) live in the
-// browser's localStorage, so they are NOT secure. Fine for local development;
-// MUST be replaced with real server-side auth (Supabase) before going live.
-// During integration, replace these helpers with Supabase user management.
+// Configure the endpoint in .env.local:
+//   NEXT_PUBLIC_AUTH_API=http://localhost/Clans/auth_api.php
 
-const OWNERS_KEY = "cm_admin_owners";
-const SESSION_KEY = "cm_admin_authed";
+const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API;
+
+const TOKEN_KEY = "cm_admin_token";
 const CURRENT_KEY = "cm_admin_current";
+const OWNER_EVENT = "cm-owner-updated";
 
-// The first/seed owner. Always present and cannot be removed.
-export const SEED_OWNER = {
-  name: "Vivek",
-  email: "vk3630@gmail.com",
-  password: "asdfg",
-  seed: true,
-};
+// --- token + session storage ----------------------------------------------
 
-// --- Owner storage ---------------------------------------------------------
-
-export function getOwners() {
-  if (typeof window === "undefined") return [SEED_OWNER];
-  try {
-    const raw = localStorage.getItem(OWNERS_KEY);
-    if (!raw) {
-      localStorage.setItem(OWNERS_KEY, JSON.stringify([SEED_OWNER]));
-      return [SEED_OWNER];
-    }
-
-    const stored = JSON.parse(raw);
-    const seedEmail = SEED_OWNER.email.toLowerCase();
-
-    // Auto-migration: drop any stale seed/primary entry (e.g. an old email a
-    // previous version seeded) and keep only genuinely added owners.
-    const added = stored.filter(
-      (o) => !o.seed && o.email.toLowerCase() !== seedEmail
-    );
-
-    // Rebuild with the current seed owner first.
-    const list = [SEED_OWNER, ...added];
-
-    // Persist the cleaned list if it differs from what was stored.
-    if (JSON.stringify(list) !== raw) {
-      localStorage.setItem(OWNERS_KEY, JSON.stringify(list));
-    }
-    return list;
-  } catch {
-    localStorage.setItem(OWNERS_KEY, JSON.stringify([SEED_OWNER]));
-    return [SEED_OWNER];
-  }
-}
-
-function saveOwners(list) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(OWNERS_KEY, JSON.stringify(list));
-  }
-}
-
-// Returns { ok: true } or { ok: false, error }.
-export function addOwner({ email, password }) {
-  const owners = getOwners();
-  const cleanEmail = email.trim().toLowerCase();
-  if (owners.some((o) => o.email.toLowerCase() === cleanEmail)) {
-    return { ok: false, error: "An owner with this email already exists." };
-  }
-  // Derive a display name from the email's local part (e.g. "owner@x.com" → "owner").
-  const name = email.trim().split("@")[0];
-  owners.push({ name, email: email.trim(), password });
-  saveOwners(owners);
-  return { ok: true };
-}
-
-export function removeOwner(email) {
-  const target = email.toLowerCase();
-  if (target === SEED_OWNER.email.toLowerCase()) {
-    return { ok: false, error: "The primary owner cannot be removed." };
-  }
-  saveOwners(getOwners().filter((o) => o.email.toLowerCase() !== target));
-  return { ok: true };
-}
-
-// --- Credentials check -----------------------------------------------------
-
-export function checkCredentials({ email, password }) {
-  const cleanEmail = email.trim().toLowerCase();
-  return (
-    getOwners().find(
-      (o) =>
-        o.email.toLowerCase() === cleanEmail &&
-        o.password === password
-    ) || null
-  );
-}
-
-// --- Session ---------------------------------------------------------------
-
-export function setAuthed(owner) {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(SESSION_KEY, "1");
-  if (owner) {
-    sessionStorage.setItem(
-      CURRENT_KEY,
-      JSON.stringify({ name: owner.name, email: owner.email })
-    );
-  }
-}
-
-export function clearAuthed() {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(CURRENT_KEY);
+export function getToken() {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export function isAuthed() {
-  if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(SESSION_KEY) === "1";
+  return !!getToken();
 }
 
 export function getCurrentOwner() {
@@ -124,4 +29,119 @@ export function getCurrentOwner() {
   } catch {
     return null;
   }
+}
+
+function setSession(token, user) {
+  if (typeof window === "undefined") return;
+  if (token) sessionStorage.setItem(TOKEN_KEY, token);
+  if (user) {
+    const light = { name: user.name, email: user.email };
+    sessionStorage.setItem(CURRENT_KEY, JSON.stringify(light));
+    window.dispatchEvent(new CustomEvent(OWNER_EVENT, { detail: light }));
+  }
+}
+
+export function signOut() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(CURRENT_KEY);
+}
+
+// Subscribe to owner-identity changes so cached chrome (topbar) can refresh.
+// Returns an unsubscribe function.
+export function onOwnerUpdated(handler) {
+  if (typeof window === "undefined") return () => {};
+  const fn = (e) => handler(e.detail);
+  window.addEventListener(OWNER_EVENT, fn);
+  return () => window.removeEventListener(OWNER_EVENT, fn);
+}
+
+// --- server calls ----------------------------------------------------------
+
+// POST/GET the auth API. Attaches the bearer token; returns { ok, data } where
+// `ok` reflects the HTTP status and `data` is the parsed JSON (or {}).
+async function authCall(action, { method = "GET", body } = {}) {
+  if (!AUTH_API) return { ok: false, data: { error: "Auth API not configured." } };
+  const headers = {};
+  const token = getToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  try {
+    const res = await fetch(`${AUTH_API}?action=${action}`, {
+      method,
+      cache: "no-store",
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data };
+  } catch (e) {
+    return { ok: false, data: { error: "Can't reach the server." } };
+  }
+}
+
+// Sign in with email + password. Returns { ok } or { ok:false, error }.
+export async function signIn({ email, password }) {
+  const { ok, data } = await authCall("login", {
+    method: "POST",
+    body: { email: (email || "").trim(), password: password || "" },
+  });
+  if (ok && data.token) {
+    setSession(data.token, data.user);
+    return { ok: true };
+  }
+  return { ok: false, error: data.error || "Invalid email or password." };
+}
+
+// --- owner management (Settings) -------------------------------------------
+
+// Returns an array of owners: { name, email, seed }.  (seed = the primary owner)
+export async function getOwners() {
+  const { ok, data } = await authCall("list_users");
+  if (ok && Array.isArray(data.users)) {
+    return data.users.map((u) => ({ name: u.name, email: u.email, seed: !!u.primary }));
+  }
+  return [];
+}
+
+// Returns { ok: true } or { ok: false, error }.
+export async function addOwner({ email, password }) {
+  const { ok, data } = await authCall("add_user", {
+    method: "POST",
+    body: { email: (email || "").trim(), password },
+  });
+  return ok ? { ok: true } : { ok: false, error: data.error || "Couldn't add owner." };
+}
+
+export async function removeOwner(email) {
+  const { ok, data } = await authCall("remove_user", {
+    method: "POST",
+    body: { email },
+  });
+  return ok ? { ok: true } : { ok: false, error: data.error || "Couldn't remove owner." };
+}
+
+// --- profile ---------------------------------------------------------------
+
+// Edit the logged-in owner's name + email. Returns { ok, owner } or { ok:false, error }.
+export async function updateOwnerProfile({ name, email }) {
+  const { ok, data } = await authCall("update_profile", {
+    method: "POST",
+    body: { name: (name || "").trim(), email: (email || "").trim() },
+  });
+  if (ok && data.user) {
+    // Email/name changed → server re-issued the token; refresh the session.
+    setSession(data.token, data.user);
+    return { ok: true, owner: data.user };
+  }
+  return { ok: false, error: data.error || "Couldn't update profile." };
+}
+
+// Change the logged-in owner's password. Returns { ok } or { ok:false, error }.
+export async function changeOwnerPassword(currentPassword, newPassword) {
+  const { ok, data } = await authCall("change_password", {
+    method: "POST",
+    body: { currentPassword, newPassword },
+  });
+  return ok ? { ok: true } : { ok: false, error: data.error || "Couldn't change password." };
 }

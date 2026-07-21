@@ -25,6 +25,26 @@ const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_DIMENSION = 1600; // downscale longest side to this before saving
 
+// Existing covers are stored as paths relative to the public site folder (e.g.
+// "image/blog/uploads/x.jpg"). Resolve them against the site's base URL — the
+// API URL up to its last "/" — so the edit preview shows the saved image instead
+// of 404-ing against the dashboard's own origin. Data URLs / absolute URLs pass
+// through unchanged. (Mirrors coverSrc in src/app/blog/page.js.)
+const SITE_BASE = (() => {
+  try {
+    const u = new URL(process.env.NEXT_PUBLIC_POSTS_API);
+    return u.origin + u.pathname.replace(/[^/]*$/, "");
+  } catch {
+    return "";
+  }
+})();
+
+function coverSrc(cover) {
+  if (!cover) return "";
+  if (/^(https?:|data:|\/)/.test(cover)) return cover;
+  return `${SITE_BASE}${cover}`;
+}
+
 // Downscale + re-encode an image File to a JPEG data URL so large photos don't
 // bloat the database / request. GIFs are passed through untouched (to keep
 // animation), just read as a data URL.
@@ -221,7 +241,7 @@ export default function AddBlogPanel({ open, onClose, onSubmit, post }) {
             >
               {coverPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={coverPreview} alt="cover preview" className="w-full h-full object-cover" />
+                <img src={coverSrc(coverPreview)} alt="cover preview" className="w-full h-full object-cover" />
               ) : (
                 <>
                   <ImagePlus size={28} />

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useToast } from "./Toast";
 import Avatar from "./Avatar";
 import NotificationBell from "./NotificationBell";
-import { clearAuthed, getCurrentOwner } from "@/data/auth";
+import { signOut, getCurrentOwner, onOwnerUpdated } from "@/data/auth";
 import { Search, ChevronDown, User, Settings, LogOut, Menu } from "lucide-react";
 
 export default function Topbar({ onMenuClick, query = "", onQueryChange, searchPlaceholder = "Search anything..." }) {
@@ -19,6 +19,8 @@ export default function Topbar({ onMenuClick, query = "", onQueryChange, searchP
   useEffect(() => {
     const current = getCurrentOwner();
     if (current) setOwner(current);
+    // Refresh immediately when the profile page changes the owner's name/email.
+    return onOwnerUpdated((o) => o && setOwner(o));
   }, []);
 
   // Close on outside click or Escape. Listener is attached on the next tick
@@ -44,7 +46,7 @@ export default function Topbar({ onMenuClick, query = "", onQueryChange, searchP
 
   function handleLogout() {
     setOpen(false);
-    clearAuthed();
+    signOut();
     toast("You've been logged out.", "info");
     router.push("/signin");
   }
