@@ -278,7 +278,9 @@ function FilterChips({ options, value, onChange }) {
 }
 
 function LeadDetail({ lead: l, onClose, onStatusChange }) {
-  const waNumber = l.mobile && l.mobile.length === 10 ? `91${l.mobile}` : l.mobile;
+  // wa.me needs digits only, with the country code.
+  const digits = (l.mobile || "").replace(/\D/g, "");
+  const waNumber = digits.length === 10 ? `91${digits}` : digits;
 
   return (
     <>
