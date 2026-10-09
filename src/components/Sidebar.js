@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, FileText, LogOut, X } from "lucide-react";
+import { LayoutDashboard, Users, Sun, FileText, LogOut, X } from "lucide-react";
 import Logo from "./Logo";
+import { useSaathi } from "./SaathiProvider";
 
 const groups = [
   {
@@ -14,6 +15,7 @@ const groups = [
     title: "Management",
     items: [
       { label: "Users / Inquiries", icon: Users, href: "/inquiries" },
+      { label: "Solar Saathi Leads", icon: Sun, href: "/saathi", badge: "saathiNew" },
       { label: "Blog", icon: FileText, href: "/blog" },
     ],
   },
@@ -24,6 +26,8 @@ const groups = [
 ];
 
 function NavContent({ pathname, onNavigate }) {
+  const { leads } = useSaathi();
+  const badges = { saathiNew: leads.filter((l) => l.status === "New").length };
   const isActive = (href) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -37,7 +41,7 @@ function NavContent({ pathname, onNavigate }) {
             </p>
           )}
           <div className="space-y-1">
-            {group.items.map(({ label, icon: Icon, href }) => {
+            {group.items.map(({ label, icon: Icon, href, badge }) => {
               const active = isActive(href);
               return (
                 <Link
@@ -51,7 +55,16 @@ function NavContent({ pathname, onNavigate }) {
                   }`}
                 >
                   <Icon size={18} />
-                  {label}
+                  <span className="flex-1">{label}</span>
+                  {badge && badges[badge] > 0 && (
+                    <span
+                      className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-semibold flex items-center justify-center ${
+                        active ? "bg-white/25 text-white" : "bg-brand-600 text-white"
+                      }`}
+                    >
+                      {badges[badge]}
+                    </span>
+                  )}
                 </Link>
               );
             })}
